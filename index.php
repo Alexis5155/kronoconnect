@@ -52,6 +52,46 @@ if (($appConfigRaw['debug'] ?? false) === true) {
 
 date_default_timezone_set($appConfigRaw['timezone'] ?? 'Europe/Paris');
 
+// ─── Handlers globaux (erreurs PHP → exceptions, exceptions → ErrorController)
+set_error_handler(function (int $severity, string $message, string $file, int $line): bool {
+    if (!(error_reporting() & $severity)) {
+        return false;
+    }
+    throw new \ErrorException($message, 0, $severity, $file, $line);
+});
+
+set_exception_handler(function (\Throwable $e) use ($appConfigRaw): void {
+    $appDebug = ($appConfigRaw['debug'] ?? false) === true;
+    try {
+        \KronoConnect\Core\Logger::error('Uncaught: ' . $e->getMessage(), [
+            'file'  => $e->getFile(),
+            'line'  => $e->getLine(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+    } catch (\Throwable $_) {
+        // Ignorer si le logger est HS
+    }
+
+    if (!headers_sent()) {
+        http_response_code(500);
+    }
+
+    $msg = $appDebug ? $e->getMessage() : '';
+
+    try {
+        (new \KronoConnect\Controllers\ErrorController())->show(500, $msg);
+    } catch (\Throwable $_) {
+        if (!headers_sent()) {
+            header('Content-Type: text/html; charset=utf-8');
+        }
+        echo '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">'
+            . '<title>Erreur 500</title></head><body>'
+            . '<h1>500 — Erreur serveur</h1>'
+            . ($msg ? '<p>' . htmlspecialchars($msg) . '</p>' : '')
+            . '</body></html>';
+    }
+});
+
 // ─── Headers de sécurité (avant tout output) ──────────────────────────────
 \KronoConnect\Core\Security::sendSecurityHeaders();
 

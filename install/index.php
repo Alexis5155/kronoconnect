@@ -678,7 +678,11 @@ body.dark .rv{color:#c7d0ff;}
       </div>
       <div class="field">
         <label class="label">URL de base *</label>
-        <input class="input" type="url" id="base_url" value="<?= (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/kronoconnect' ?>">
+        <?php
+        $detectedBasePath = rtrim(dirname(dirname($_SERVER['SCRIPT_NAME'])), '/\\');
+        $detectedUrl = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $detectedBasePath;
+        ?>
+        <input class="input" type="url" id="base_url" value="<?= $detectedUrl ?>">
         <div class="field-help">Sans slash final.</div>
       </div>
     </div>
@@ -1022,7 +1026,7 @@ async function runInstall() {
             addLine('done','Installation terminée avec succès.');
             document.getElementById('install-title').textContent='Installation terminée !';
             document.getElementById('install-email').textContent=state.admin.email;
-            document.getElementById('install-link').href=obj.msg+'/login';
+            document.getElementById('install-link').href=obj.msg;
             document.getElementById('install-success').style.display='block';
           } else { addLine(obj.type,obj.msg); addCursor(); }
         } catch(e) {}
