@@ -8,6 +8,22 @@ define('VIEW_PATH',    APP_PATH  . '/views');
 define('CONFIG_PATH',  APP_PATH  . '/config');
 define('STORAGE_PATH', ROOT_PATH . '/storage');
 
+// ── Vérification installation (à faire avant tout require de config) ──────
+$requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+$_basePath  = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
+
+// Retire le préfixe du sous-dossier avant de tester /install
+// (en sous-dossier, $requestUri vaut /kronoconnect/install/ et non /install/)
+$_localUri  = ($_basePath !== '' && str_starts_with($requestUri, $_basePath))
+              ? substr($requestUri, strlen($_basePath))
+              : $requestUri;
+$isInstall  = str_starts_with($_localUri, '/install');
+
+if (!file_exists(ROOT_PATH . '/install/install.lock') && !$isInstall) {
+    header('Location: ' . $_basePath . '/install/');
+    exit;
+}
+
 // ─── Autoloader PSR-4 maison ───────────────────────────────────────────────
 // DOIT être le premier require, avant tout appel de classe
 require_once APP_PATH . '/core/Autoloader.php';
@@ -41,22 +57,6 @@ date_default_timezone_set($appConfigRaw['timezone'] ?? 'Europe/Paris');
 
 // ─── Session sécurisée ─────────────────────────────────────────────────────
 \KronoConnect\Core\Session::start();
-
-// ── Vérification installation ─────────────────────────────────────────────
-$requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
-$_basePath  = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
-
-// Retire le préfixe du sous-dossier avant de tester /install
-// (en sous-dossier, $requestUri vaut /kronoconnect/install/ et non /install/)
-$_localUri  = ($_basePath !== '' && str_starts_with($requestUri, $_basePath))
-              ? substr($requestUri, strlen($_basePath))
-              : $requestUri;
-$isInstall  = str_starts_with($_localUri, '/install');
-
-if (!file_exists(ROOT_PATH . '/install/install.lock') && !$isInstall) {
-    header('Location: ' . $_basePath . '/install/');
-    exit;
-}
 
 // ─── Vérification "Remember Me" ────────────────────────────────────────────
 if (!\KronoConnect\Core\Session::isLoggedIn()) {
