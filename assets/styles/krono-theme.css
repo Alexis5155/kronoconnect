@@ -1,0 +1,17 @@
+/* ══════════════════════════════════════════════════════════════
+   KronoCore — Gestion du Thème (Dark/Light)
+   Note : les variables de thème sont définies dans krono-variables.css
+   Ce fichier ne contient que les overrides de composants spécifiques
+   au thème qui ne peuvent pas être exprimés via des variables seules.
+══════════════════════════════════════════════════════════════ */
+
+/* Les scrollbars s'adaptent au thème */
+[data-theme="dark"] {
+    color-scheme: dark;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+}
+[data-theme="dark"] ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+}

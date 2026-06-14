@@ -1,0 +1,48 @@
+# ─── Configuration sensible ───────────────────────────────────────────────────
+app/config/database.php
+app/config/app.php
+
+# ─── Verrou d'installation ────────────────────────────────────────────────────
+install/install.lock
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+storage/logs/
+storage/logs/*.log
+
+# ─── Cache ────────────────────────────────────────────────────────────────────
+storage/cache/
+
+# ─── Fichiers uploadés / stockage utilisateurs ────────────────────────────────
+storage/files/
+storage/tmp/
+uploads/
+
+# ─── Dépendances ──────────────────────────────────────────────────────────────
+vendor/
+
+# ─── Module applicatif (spécifique à chaque instance) ────────────────────────
+app/module/
+
+# ─── Fichiers temporaires et sauvegardes ──────────────────────────────────────
+*.bak
+*.tmp
+*.swp
+*~
+
+# ─── OS / IDE ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# ─── Outils IA (fichiers de contexte locaux) ──────────────────────────────────
+CLAUDE.md
+GEMINI.md
+
+# --- Tests --------------------------------------------------------------------
+phpunit.phar
+phpunit.xml
+tests/
+.phpunit.cache/

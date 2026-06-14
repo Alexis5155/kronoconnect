@@ -1,0 +1,6 @@
+{
+    "schema": "schema.sql",
+    "migrations": [
+        "001_1.0.0.sql"
+    ]
+}

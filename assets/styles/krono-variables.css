@@ -1,0 +1,167 @@
+/* ══════════════════════════════════════════════════════════════
+   KronoCore — Variables CSS
+   Design system centralisé. Mode nuit : [data-theme="dark"] sur <html>
+══════════════════════════════════════════════════════════════ */
+
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300..700&display=swap');
+
+:root {
+    /* ── Palette principale ────────────────────────────────── */
+    --krono-accent:          #3b5fc0;
+    --krono-accent-hover:    #2d4fa8;
+    --krono-accent-light:    rgba(59, 95, 192, 0.12);
+    --krono-accent-rgb:      59, 95, 192;
+    --krono-accent-gradient: linear-gradient(135deg, var(--krono-accent) 0%, var(--krono-accent-hover) 100%);
+
+    /* ── Surfaces (mode nuit) ──────────────────────────────── */
+    --krono-bg:              #f0f2f7;
+    --krono-bg-gradient:     radial-gradient(at 0% 0%, rgba(var(--krono-accent-rgb), 0.05) 0px, transparent 50%), 
+                             radial-gradient(at 100% 100%, rgba(var(--krono-accent-rgb), 0.03) 0px, transparent 50%);
+    --krono-surface:         #ffffff;
+    --krono-surface-2:       #f7f8fc;
+    --krono-surface-3:       #eef0f7;
+    --krono-surface-rgb:     255, 255, 255;
+    --krono-border:          rgba(0, 0, 0, 0.08);
+    --krono-border-strong:   rgba(0, 0, 0, 0.15);
+    --krono-border-light:    rgba(0, 0, 0, 0.05);
+
+    /* ── Glassmorphisme (mode jour) ────────────────────────── */
+    --krono-glass-bg:        rgba(255, 255, 255, 0.75);
+    --krono-glass-border:    rgba(255, 255, 255, 0.9);
+    --krono-glass-blur:      20px;
+    --krono-glass-shadow:    0 8px 32px rgba(59, 95, 192, 0.10), 0 2px 8px rgba(0,0,0,0.06);
+
+    /* ── Textes ────────────────────────────────────────────── */
+    --krono-text:            #1a1f36;
+    --krono-text-2:          #4a5176;
+    --krono-text-3:          #8890b0;
+    --krono-text-inverse:    #ffffff;
+
+    /* ── Statuts ───────────────────────────────────────────── */
+    --krono-success:         #16a34a;
+    --krono-success-bg:      #f0fdf4;
+    --krono-success-border:  #bbf7d0;
+    --krono-danger:          #dc2626;
+    --krono-danger-bg:       #fef2f2;
+    --krono-danger-border:   #fecaca;
+    --krono-warning:         #d97706;
+    --krono-warning-bg:      #fffbeb;
+    --krono-warning-border:  #fde68a;
+    --krono-info:            #0284c7;
+    --krono-info-bg:         #f0f9ff;
+    --krono-info-border:     #bae6fd;
+
+    /* ── Sidebar ───────────────────────────────────────────── */
+    --krono-sidebar-bg:      rgba(255, 255, 255, 0.65);
+    --krono-sidebar-width:   260px;
+    --krono-sidebar-text:    #1a1f36;
+    --krono-sidebar-active:  rgba(var(--krono-accent-rgb), 0.1);
+    --krono-sidebar-hover:   rgba(0, 0, 0, 0.04);
+    --krono-sidebar-border:  rgba(0, 0, 0, 0.08);
+
+    /* ── Topbar ────────────────────────────────────────────── */
+    --krono-topbar-height:   64px;
+    --krono-topbar-bg:       rgba(255, 255, 255, 0.85);
+    --krono-topbar-border:   rgba(0, 0, 0, 0.07);
+
+    /* ── Typographie ───────────────────────────────────────── */
+    --krono-font:            'Geist', system-ui, -apple-system, sans-serif;
+    --krono-font-display:    'Cabinet Grotesk', system-ui, sans-serif;
+    --krono-radius-sm:       8px;
+    --krono-radius:          12px;
+    --krono-radius-lg:       20px;
+    --krono-radius-xl:       28px;
+
+    /* ── Transitions ───────────────────────────────────────── */
+    --krono-transition:      0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --krono-transition-slow: 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Animation de fondu lors du changement de thème */
+    --krono-theme-transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
+
+    /* ── Auth Backgrounds & Halos ─────────────────────────── */
+    --auth-bg-gradient:      linear-gradient(135deg, #dde4f5, #eef1fb, #f5f6ff, #e8ecf8, #dde4f5);
+    --auth-halo-1:           rgba(var(--krono-accent-rgb), 0.08);
+    --auth-halo-2:           rgba(var(--krono-accent-rgb), 0.06);
+    --auth-halo-3:           rgba(var(--krono-accent-rgb), 0.04);
+    --auth-card-bg:          rgba(255, 255, 255, 0.85);
+    --auth-card-border:      rgba(255, 255, 255, 0.95);
+    --auth-input-bg:         rgba(255, 255, 255, 0.5);
+    --auth-input-border:     rgba(0, 0, 0, 0.06);
+    --auth-input-focus:      rgba(var(--krono-accent-rgb), 0.12);
+}
+
+/* ── Application des polices ─────────────────────────────── */
+body {
+    font-family: var(--krono-font) !important;
+}
+
+h1, h2, h3, h4, h5,
+.page-title, .page-header__title, 
+.section-title, .krono-section-title,
+.sidebar-logo__name, .sidebar-section-title, .topbar-page-title,
+.stat-value, .stat-card__value, .modal-title, .auth-title,
+.hero-greeting, .card-app-title, .tab-title, .krono-notif-center__title, .nav-brand {
+    font-family: var(--krono-font-display) !important;
+}
+
+/* Transition thématique appliquée uniquement aux éléments de surface et texte principaux */
+body, .glass-card, .krono-sidebar, .krono-topbar, .krono-content, .krono-footer,
+.krono-input, .btn-krono, .krono-nav-item, .stat-card {
+    transition: var(--krono-theme-transition);
+}
+
+/* ── Mode nuit (préparé, non activé) ──────────────────────── */
+[data-theme="dark"] {
+    --krono-bg:              #0a0c10;
+    --krono-bg-gradient:     radial-gradient(at 0% 0%, rgba(var(--krono-accent-rgb), 0.08) 0px, transparent 50%), 
+                             radial-gradient(at 100% 100%, rgba(var(--krono-accent-rgb), 0.05) 0px, transparent 50%);
+    --krono-surface:         #12151c;
+    --krono-surface-2:       #1a1f2b;
+    --krono-surface-3:       #242b38;
+    --krono-border:          rgba(255, 255, 255, 0.05);
+    --krono-border-strong:   rgba(255, 255, 255, 0.12);
+
+    --krono-glass-bg:        rgba(18, 21, 28, 0.75);
+    --krono-glass-border:    rgba(255, 255, 255, 0.08);
+    --krono-glass-shadow:    0 12px 48px rgba(0, 0, 0, 0.50);
+
+    --krono-text:            #e2e8f0;
+    --krono-text-2:          #94a3b8;
+    --krono-text-3:          #64748b;
+
+    --krono-topbar-bg:       rgba(10, 12, 16, 0.82);
+    --krono-topbar-border:   rgba(255, 255, 255, 0.06);
+
+    --krono-border-light:    rgba(255, 255, 255, 0.03);
+    --krono-surface-rgb:     18, 21, 28;
+
+    /* ── Statuts (mode nuit) ───────────────────────────────── */
+    --krono-success-bg:      rgba(22, 163, 74, 0.1);
+    --krono-success-border:  rgba(22, 163, 74, 0.2);
+    --krono-danger-bg:       rgba(220, 38, 38, 0.1);
+    --krono-danger-border:   rgba(220, 38, 38, 0.2);
+    --krono-warning-bg:      rgba(217, 119, 6, 0.1);
+    --krono-warning-border:  rgba(217, 119, 6, 0.2);
+    --krono-info-bg:         rgba(2, 132, 199, 0.1);
+    --krono-info-border:     rgba(2, 132, 199, 0.2);
+
+    --auth-card-bg:          rgba(15, 18, 25, 0.92);
+    --auth-card-border:      rgba(255, 255, 255, 0.08);
+    --auth-input-bg:         rgba(255, 255, 255, 0.03);
+    --auth-input-border:     rgba(255, 255, 255, 0.08);
+    --auth-input-focus:      rgba(var(--krono-accent-rgb), 0.25);
+
+    --krono-sidebar-bg:      rgba(15, 18, 25, 0.85);
+    --krono-sidebar-text:    rgba(226, 232, 240, 0.75);
+    --krono-sidebar-active:  rgba(var(--krono-accent-rgb), 0.2);
+    --krono-sidebar-hover:   rgba(255, 255, 255, 0.04);
+    --krono-sidebar-border:  rgba(255, 255, 255, 0.06);
+
+    /* ── Auth Backgrounds & Halos (mode nuit) ─────────────── */
+    --auth-bg-gradient:      linear-gradient(135deg, #0a0c10, #12151c, #0a0c10, #1a1f2b, #0a0c10);
+    --auth-halo-1:           rgba(var(--krono-accent-rgb), 0.02);
+    --auth-halo-2:           rgba(var(--krono-accent-rgb), 0.015);
+    --auth-halo-3:           rgba(var(--krono-accent-rgb), 0.01);
+}

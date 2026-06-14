@@ -1,0 +1,15 @@
+{
+    "name": "google/kronoconnect",
+    "description": "KronoConnect Framework",
+    "type": "project",
+    "require": {
+        "phpmailer/phpmailer": "6.9",
+        "report-uri/passkeys-php": "^2.0"
+    },
+    "authors": [
+        {
+            "name": "KronoConnect",
+            "email": "KronoConnect@example.com"
+        }
+    ]
+}
