@@ -279,7 +279,7 @@ CREATE TABLE IF NOT EXISTS `{PREFIX}user_portal_order` (
     CONSTRAINT `fk_upo_user` FOREIGN KEY (`user_id`) REFERENCES `{PREFIX}users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `{PREFIX}kronoconnect_files` (
+CREATE TABLE IF NOT EXISTS `{PREFIX}files` (
   `uuid` char(36) NOT NULL,
   `original_name` varchar(255) NOT NULL,
   `mime_type` varchar(100) NOT NULL,

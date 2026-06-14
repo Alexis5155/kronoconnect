@@ -71,7 +71,7 @@ class FileManager
         }
 
         $db = Database::getInstance();
-        $tableName = $db->t('kronoconnect_files');
+        $tableName = $db->t('files');
         $stmt = $db->getRawPdo()->prepare(
             "INSERT INTO `{$tableName}` (uuid, original_name, mime_type, extension, size, module, uploaded_by, created_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, NOW())"
@@ -103,7 +103,7 @@ class FileManager
     public static function download(string $uuid, ?int $userId = null): void
     {
         $db = Database::getInstance();
-        $tableName = $db->t('kronoconnect_files');
+        $tableName = $db->t('files');
         $stmt = $db->getRawPdo()->prepare("SELECT * FROM `{$tableName}` WHERE uuid = ?");
         $stmt->execute([$uuid]);
         $fileInfo = $stmt->fetch(\PDO::FETCH_ASSOC);
@@ -150,7 +150,7 @@ class FileManager
     public static function delete(string $uuid): bool
     {
         $db = Database::getInstance();
-        $tableName = $db->t('kronoconnect_files');
+        $tableName = $db->t('files');
         $stmt = $db->getRawPdo()->prepare("SELECT extension FROM `{$tableName}` WHERE uuid = ?");
         $stmt->execute([$uuid]);
         $ext = $stmt->fetchColumn();

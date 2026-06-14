@@ -882,7 +882,7 @@ class AuthController extends BaseController
         }
 
         $db = \KronoConnect\Core\Database::getInstance();
-        $tableName = $db->t('kronoconnect_files');
+        $tableName = $db->t('files');
         // KronoConnect utilise KronoConnect_files selon FileManager
         $stmt = $db->getRawPdo()->prepare("SELECT * FROM `{$tableName}` WHERE uuid = ?");
         $stmt->execute([$uuid]);
