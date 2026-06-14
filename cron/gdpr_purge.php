@@ -12,14 +12,15 @@ if (php_sapi_name() !== 'cli') {
 
 define('ROOT_PATH', dirname(__DIR__));
 require ROOT_PATH . '/app/core/helpers.php';
-require ROOT_PATH . '/app/core/AutoLoader.php';
+require ROOT_PATH . '/app/core/Autoloader.php';
 
-use KronoConnect\Core\AutoLoader;
+use KronoConnect\Core\Autoloader;
 use KronoConnect\Core\Database;
 use KronoConnect\Core\Logger;
 use KronoConnect\Models\AdminModel;
 
-AutoLoader::register();
+$autoloader = new Autoloader();
+$autoloader->register();
 
 echo "=================================================\n";
 echo "  KronoConnect - Purge RGPD (" . date('Y-m-d H:i:s') . ")\n";
