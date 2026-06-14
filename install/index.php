@@ -210,7 +210,16 @@ function writeDatabaseConfig(array $db): void {
 }
 
 function writeAppConfig(string $appName, string $baseUrl): void {
-    $path = CONFIG_PATH . '/app.php'; if (!file_exists($path)) return;
+    $path = CONFIG_PATH . '/app.php';
+    if (!file_exists($path)) {
+        $n = addslashes($appName);
+        $u = addslashes($baseUrl);
+        $c = "<?php\ndeclare(strict_types=1);\n\nreturn [\n    'name' => '{$n}',\n    'version' => '0.0.1',\n    'debug'    => true,\n    'timezone' => 'Europe/Paris',\n    \n    'update' => [\n        'github_repo' => 'Alexis5155/kronoconnect',\n    ],\n\n    'base_url' => '{$u}',\n\n    'session' => [\n        'name'     => 'KRONOCONNECT_SESS',\n        'lifetime' => 0,\n        'secure'   => false,\n        'httponly' => true,\n        'samesite' => 'Lax',\n    ],\n\n    'remember_me' => [\n        'cookie_name' => 'KronoConnect_remember',\n        'lifetime'    => 30 * 24 * 3600,\n    ],\n\n    'features' => [\n        'registration' => true,\n    ],\n];\n";
+        if (file_put_contents($path, $c) === false) {
+            throw new \RuntimeException("Impossible d'écrire app.php");
+        }
+        return;
+    }
     $c = file_get_contents($path);
     // Limite le remplacement à 1 occurrence pour ne pas écraser le 'name' de la session
     $c = preg_replace("/'name'\s*=>\s*'[^']*'/",    "'name' => '"    . addslashes($appName) . "'", $c, 1);
