@@ -926,42 +926,48 @@ class AuthController extends BaseController
 
     public function webauthnAssertionOptions(): void
     {
-        $userId = Session::get('pending_mfa_user_id');
-        if (!$userId) {
+        try {
+            $userId = Session::get('pending_mfa_user_id');
+            if (!$userId) {
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Session MFA expirée.']);
+                return;
+            }
+
+            $server = $this->getWebAuthnServer();
+
+            $credentials = $this->users->getWebAuthnCredentials((int)$userId);
+            $allowedIds = [];
+            foreach ($credentials as $cred) {
+                $allowedIds[] = base64_decode(strtr($cred['credential_id'], '-_', '+/'));
+            }
+
+            if (empty($allowedIds)) {
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Aucune clé enregistrée pour cet utilisateur.']);
+                return;
+            }
+
+            $getArgs = $server->getGetArgs(
+                $allowedIds,
+                20,
+                true, // allowUsb
+                true, // allowNfc
+                true, // allowBle
+                true, // allowHybrid
+                true, // allowInternal
+                false // requireUserVerification
+            );
+
+            Session::set('webauthn_challenge', $server->getChallenge()->jsonSerialize());
+
             header('Content-Type: application/json');
-            echo json_encode(['error' => 'Session MFA expirée.']);
-            return;
-        }
-
-        $server = $this->getWebAuthnServer();
-
-        $credentials = $this->users->getWebAuthnCredentials((int)$userId);
-        $allowedIds = [];
-        foreach ($credentials as $cred) {
-            $allowedIds[] = base64_decode(strtr($cred['credential_id'], '-_', '+/'));
-        }
-
-        if (empty($allowedIds)) {
+            echo json_encode($getArgs);
+        } catch (\Throwable $e) {
+            Logger::error('WebAuthn Assertion Options failed : ' . $e->getMessage(), ['userId' => Session::get('pending_mfa_user_id')]);
             header('Content-Type: application/json');
-            echo json_encode(['error' => 'Aucune clé enregistrée pour cet utilisateur.']);
-            return;
+            echo json_encode(['error' => $e->getMessage()]);
         }
-
-        $getArgs = $server->getGetArgs(
-            $allowedIds,
-            20,
-            true, // allowUsb
-            true, // allowNfc
-            true, // allowBle
-            true, // allowHybrid
-            true, // allowInternal
-            false // requireUserVerification
-        );
-
-        Session::set('webauthn_challenge', $server->getChallenge()->jsonSerialize());
-
-        header('Content-Type: application/json');
-        echo json_encode($getArgs);
     }
 
     public function webauthnVerify(): void
@@ -1050,7 +1056,7 @@ class AuthController extends BaseController
 
             header('Content-Type: application/json');
             echo json_encode(['success' => true, 'redirect_url' => $redirectUrl]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Logger::error('WebAuthn Authentication failed : ' . $e->getMessage(), ['userId' => $userId]);
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);

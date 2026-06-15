@@ -4,9 +4,20 @@ declare(strict_types=1);
 define('KRONO_APP_NAME',  'KronoConnect');
 define('KRONO_VERSION',   '1.0.0');
 define('ROOT_PATH',       dirname(__DIR__));
+define('APP_PATH',        ROOT_PATH . '/app');
 define('MIGRATIONS_PATH', ROOT_PATH . '/database/migrations');
 define('CONFIG_PATH',     ROOT_PATH . '/app/config');
 define('LOCK_FILE',       __DIR__ . '/install.lock');
+
+// ─── Autoloader PSR-4 maison ───────────────────────────────────────────────
+require_once APP_PATH . '/core/Autoloader.php';
+$autoloader = new \KronoConnect\Core\Autoloader();
+$autoloader->register();
+
+// Autoloader Composer (si présent)
+if (file_exists(ROOT_PATH . '/vendor/autoload.php')) {
+    require_once ROOT_PATH . '/vendor/autoload.php';
+}
 
 // ── Protection install.lock ──────────────────────────────────────────────────
 if (file_exists(LOCK_FILE)) {
@@ -62,7 +73,40 @@ function ajaxCheckSmtp(array $b): void {
     $conn = @fsockopen($host, $port, $errno, $errstr, 5);
     if (!$conn) ajaxError("Impossible de joindre {$host}:{$port} — {$errstr}");
     fclose($conn);
-    echo json_encode(['ok' => true, 'message' => "Connexion TCP à {$host}:{$port} réussie."]);
+
+    $testTo = trim($b['smtp_test_to'] ?? '');
+    if ($testTo) {
+        if (!filter_var($testTo, FILTER_VALIDATE_EMAIL)) {
+            ajaxError("Adresse de réception invalide.");
+        }
+        $cfg = [
+            'driver'          => 'smtp',
+            'smtp_host'       => $host,
+            'smtp_port'       => $port,
+            'smtp_user'       => trim($b['smtp_user'] ?? ''),
+            'smtp_pass'       => $b['smtp_pass'] ?? '',
+            'smtp_encryption' => trim($b['smtp_encryption'] ?? 'tls'),
+            'from_email'      => trim($b['mail_from'] ?? ''),
+            'from_name'       => trim($b['mail_from_name'] ?? 'KronoConnect'),
+        ];
+        if (empty($cfg['from_email'])) {
+            ajaxError("L'adresse expéditeur est requise pour envoyer un e-mail de test.");
+        }
+        try {
+            \KronoConnect\Core\Mailer::send(
+                $testTo,
+                'Test Installation',
+                'Test de configuration SMTP — KronoConnect',
+                '<h1>Succès !</h1><p>Si vous recevez ce message, c\'est que votre configuration SMTP sur <strong>KronoConnect</strong> est correcte.</p>',
+                $cfg
+            );
+            echo json_encode(['ok' => true, 'message' => "Connexion TCP réussie & e-mail de test envoyé à {$testTo}."]);
+        } catch (\Throwable $e) {
+            ajaxError("Échec de l'envoi de l'e-mail : " . $e->getMessage());
+        }
+    } else {
+        echo json_encode(['ok' => true, 'message' => "Connexion TCP à {$host}:{$port} réussie."]);
+    }
 }
 
 function ajaxInstall(array $b): void {
@@ -139,6 +183,26 @@ function ajaxInstall(array $b): void {
             $pdo->prepare("INSERT IGNORE INTO `{$prefix}group_members` (group_id, user_id) VALUES (?, ?)")
                 ->execute([$group['id'], $adminUserId]);
             tlog('success', 'Super-administrateur affecté au groupe super_admin.');
+        }
+
+        // ── Enregistrement des paramètres e-mail/SMTP ──────────────────────
+        if (!empty($smtp)) {
+            tlog('info', 'Enregistrement de la configuration e-mail…');
+            $smtpSettings = [
+                'driver'          => 'smtp',
+                'smtp_host'       => $smtp['smtp_host'] ?? '',
+                'smtp_port'       => $smtp['smtp_port'] ?? '587',
+                'smtp_user'       => $smtp['smtp_user'] ?? '',
+                'smtp_pass'       => $smtp['smtp_pass'] ?? '',
+                'smtp_encryption' => $smtp['smtp_encryption'] ?? 'tls',
+                'from_email'      => $smtp['mail_from'] ?? '',
+                'from_name'       => $smtp['mail_from_name'] ?? '',
+            ];
+            $stmt = $pdo->prepare("INSERT INTO `{$prefix}settings` (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+            foreach ($smtpSettings as $key => $val) {
+                $stmt->execute([$key, (string)$val]);
+            }
+            tlog('success', 'Configuration e-mail enregistrée.');
         }
 
         // ── Fichiers de config ────────────────────────────────────────────
@@ -950,7 +1014,17 @@ async function testSmtp() {
   const btn=document.getElementById('btn-smtp-test'), res=document.getElementById('smtp-test-res');
   btn.disabled=true; btn.innerHTML='<div class="spin spin-d"></div>';
   try {
-    const r=await fetch('?action=check_smtp',{method:'POST',headers:jh(),body:JSON.stringify({smtp_host:v('smtp_host'),smtp_port:v('smtp_port')})}), d=await r.json();
+    const payload = {
+      smtp_host: v('smtp_host'),
+      smtp_port: v('smtp_port'),
+      smtp_user: v('smtp_user'),
+      smtp_pass: v('smtp_pass'),
+      smtp_encryption: v('smtp_encryption'),
+      mail_from: v('mail_from'),
+      mail_from_name: v('mail_from_name'),
+      smtp_test_to: v('smtp_test_to')
+    };
+    const r=await fetch('?action=check_smtp',{method:'POST',headers:jh(),body:JSON.stringify(payload)}), d=await r.json();
     res.innerHTML=d.ok?`<span style="color:var(--success);font-weight:600;"><i class="bi bi-check-circle-fill"></i> ${d.message}</span>`
                       :`<span style="color:var(--danger);font-weight:600;"><i class="bi bi-x-circle-fill"></i> ${d.error}</span>`;
   } catch(e){ res.innerHTML=`<span style="color:var(--danger);">Erreur réseau.</span>`; }

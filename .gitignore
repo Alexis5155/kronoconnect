@@ -17,9 +17,6 @@ storage/files/
 storage/tmp/
 uploads/
 
-# ─── Dépendances ──────────────────────────────────────────────────────────────
-vendor/
-
 # ─── Module applicatif (spécifique à chaque instance) ────────────────────────
 app/module/
 

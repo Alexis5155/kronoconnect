@@ -1,0 +1,41 @@
+<?php return array(
+    'root' => array(
+        'name' => 'google/kronoconnect',
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
+        'reference' => 'f1773f525e43581aa1a06d43abb315503b55352b',
+        'type' => 'project',
+        'install_path' => __DIR__ . '/../../',
+        'aliases' => array(),
+        'dev' => true,
+    ),
+    'versions' => array(
+        'google/kronoconnect' => array(
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
+            'reference' => 'f1773f525e43581aa1a06d43abb315503b55352b',
+            'type' => 'project',
+            'install_path' => __DIR__ . '/../../',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'phpmailer/phpmailer' => array(
+            'pretty_version' => 'v6.9.0',
+            'version' => '6.9.0.0',
+            'reference' => '934f852bfa68e59476023626461fed0c8ed6d052',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../phpmailer/phpmailer',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'report-uri/passkeys-php' => array(
+            'pretty_version' => 'v2.0.1',
+            'version' => '2.0.1.0',
+            'reference' => 'f8cddbfe00f9ecff1eebeb6bcae18b111f6bc468',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../report-uri/passkeys-php',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+    ),
+);

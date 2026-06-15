@@ -8,6 +8,7 @@ use KronoConnect\Core\Validator;
 use KronoConnect\Models\UserModel;
 use ReportUri\Passkeys\WebAuthn;
 use ReportUri\Passkeys\Binary\ByteBuffer;
+use KronoConnect\Core\Logger;
 
 class ProfileController extends BaseController
 {
@@ -489,37 +490,43 @@ class ProfileController extends BaseController
 
     public function webauthnRegisterOptions(): void
     {
-        $userId = Session::userId();
-        $user = $this->userModel->findById($userId);
-        if (!$user) {
+        try {
+            $userId = Session::userId();
+            $user = $this->userModel->findById($userId);
+            if (!$user) {
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Utilisateur introuvable.']);
+                return;
+            }
+
+            $server = $this->getWebAuthnServer();
+
+            $existingCredentials = $this->userModel->getWebAuthnCredentials((int)$userId);
+            $excludeIds = [];
+            foreach ($existingCredentials as $cred) {
+                $excludeIds[] = base64_decode(strtr($cred['credential_id'], '-_', '+/'));
+            }
+
+            $createArgs = $server->getCreateArgs(
+                (string)$userId,
+                $user['email'],
+                trim(($user['prenom'] ?? '') . ' ' . ($user['nom'] ?? '')),
+                20,
+                false,
+                false,
+                null,
+                $excludeIds
+            );
+
+            Session::set('webauthn_challenge', $server->getChallenge()->jsonSerialize());
+
             header('Content-Type: application/json');
-            echo json_encode(['error' => 'Utilisateur introuvable.']);
-            return;
+            echo json_encode($createArgs);
+        } catch (\Throwable $e) {
+            Logger::error('WebAuthn Registration Options failed : ' . $e->getMessage(), ['userId' => Session::userId()]);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => $e->getMessage()]);
         }
-
-        $server = $this->getWebAuthnServer();
-
-        $existingCredentials = $this->userModel->getWebAuthnCredentials((int)$userId);
-        $excludeIds = [];
-        foreach ($existingCredentials as $cred) {
-            $excludeIds[] = base64_decode(strtr($cred['credential_id'], '-_', '+/'));
-        }
-
-        $createArgs = $server->getCreateArgs(
-            (string)$userId,
-            $user['email'],
-            trim(($user['prenom'] ?? '') . ' ' . ($user['nom'] ?? '')),
-            20,
-            false,
-            false,
-            null,
-            $excludeIds
-        );
-
-        Session::set('webauthn_challenge', $server->getChallenge()->jsonSerialize());
-
-        header('Content-Type: application/json');
-        echo json_encode($createArgs);
     }
 
     public function webauthnRegister(): void
@@ -571,7 +578,7 @@ class ProfileController extends BaseController
 
             header('Content-Type: application/json');
             echo json_encode(['success' => true]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Logger::error('WebAuthn Registration failed : ' . $e->getMessage(), ['userId' => $userId]);
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
