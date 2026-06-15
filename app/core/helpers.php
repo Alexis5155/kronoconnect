@@ -52,8 +52,8 @@ function get_base_url(): string
         if (empty($basePath) && isset($_SERVER['HTTP_HOST'])) {
             $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
             $host     = $_SERVER['HTTP_HOST'];
-            $script   = dirname($_SERVER['SCRIPT_NAME']);
-            $basePath = rtrim($protocol . '://' . $host . $script, '/\\');
+            $script   = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+            $basePath = rtrim($protocol . '://' . $host . $script, '/');
         }
     }
 

@@ -44,7 +44,7 @@ $navSections = [
     <meta name="csrf-token" content="<?= \KronoConnect\Core\Security::csrfToken() ?>">
     <script src="<?= asset('scripts/theme.js') ?>"></script>
     <title><?= e($title) ?> — KronoConnect</title>
-    <link rel="icon" href="<?= asset('images/favicon.ico') ?>">
+    <link rel="icon" type="image/png" href="<?= asset('images/favicon.png') ?>">
     <link rel="stylesheet" href="<?= asset('styles/krono-variables.css') ?>">
     <link rel="stylesheet" href="<?= asset('styles/krono-theme.css') ?>">
     <link rel="stylesheet" href="<?= asset('styles/krono-components.css') ?>">

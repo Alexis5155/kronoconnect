@@ -339,7 +339,7 @@ elseif ($initialPanel === 2 || ($initialPanel === 1 && !$allowRegister)) $wideCl
 
         <form method="POST" action="<?= url('/reset-password' . (!empty($flowId) ? '?flow=' . e($flowId) : '')) ?>" id="formForgot"
               data-server-error="<?= e($forgotError ?? '') ?>"
-              data-server-success="<?= e($forgotSent ? 'Lien envoyé ! Vérifiez votre boîte mail.' : '') ?>">
+              data-server-success="<?= e(($forgotSent ?? false) ? 'Lien envoyé ! Vérifiez votre boîte mail.' : '') ?>">
             <?= csrf() ?>
 
             <div style="margin-bottom:1.25rem;">

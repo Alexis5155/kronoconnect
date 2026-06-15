@@ -16,7 +16,7 @@ $userTheme = $authUser['theme'] ?? 'system';
     <meta name="view-transition" content="same-origin">
     <script src="<?= asset('scripts/theme.js') ?>"></script>
     <title><?= e($title) ?> — KronoConnect</title>
-    <link rel="icon" href="<?= asset('images/favicon.ico') ?>">
+    <link rel="icon" type="image/png" href="<?= asset('images/favicon.png') ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet">

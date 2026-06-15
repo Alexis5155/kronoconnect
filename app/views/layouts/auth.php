@@ -12,17 +12,17 @@ $userTheme = \KronoConnect\Core\Session::get('user')['theme'] ?? 'system';
     <meta name="csrf-token" content="<?= \KronoConnect\Core\Security::csrfToken() ?>">
     <script src="<?= asset('scripts/theme.js') ?>"></script>
     <title><?= e($title) ?> — KronoConnect</title>
-    <link rel="icon" href="<?= asset('images/favicon.ico') ?>">
+    <link rel="icon" type="image/png" href="<?= asset('images/favicon.png') ?>">
     <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= asset('styles/krono-variables.css') ?>?v=1.1">
-    <link rel="stylesheet" href="<?= asset('styles/krono-theme.css') ?>?v=1.1">
-    <link rel="stylesheet" href="<?= asset('styles/krono-components.css') ?>?v=1.1">
-    <link rel="stylesheet" href="<?= asset('styles/krono-auth.css') ?>?v=1.1">
-    <link rel="stylesheet" href="<?= asset('styles/krono-animations.css') ?>?v=1.1">
-    <link rel="stylesheet" href="<?= asset('styles/krono-layout.css') ?>?v=2.0">
+    <link rel="stylesheet" href="<?= asset('styles/krono-variables.css') ?>?v=<?= time() ?>">
+    <link rel="stylesheet" href="<?= asset('styles/krono-theme.css') ?>?v=<?= time() ?>">
+    <link rel="stylesheet" href="<?= asset('styles/krono-components.css') ?>?v=<?= time() ?>">
+    <link rel="stylesheet" href="<?= asset('styles/krono-auth.css') ?>?v=<?= time() ?>">
+    <link rel="stylesheet" href="<?= asset('styles/krono-animations.css') ?>?v=<?= time() ?>">
+    <link rel="stylesheet" href="<?= asset('styles/krono-layout.css') ?>?v=<?= time() ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 <body class="auth-body">
