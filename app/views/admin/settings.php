@@ -594,7 +594,19 @@ $s = fn($key, $default = '') => $settings[$key] ?? $default;
                     <div id="u-update-area"></div>
                 </div>
 
-                <div class="fade-in-up anim-delay-7 glass-card" style="background:transparent; border:none; padding:0; box-shadow:none;">
+                <div class="fade-in-up anim-delay-7 glass-card" id="u-changelog-area" style="display:none; margin-bottom: 1.5rem;">
+                    <div class="card-title-area" style="margin-bottom: 1rem;">
+                        <div class="card-icon"><i class="bi bi-journal-text"></i></div>
+                        <div>
+                            <h3 id="u-changelog-title">Notes de la dernière mise à jour</h3>
+                            <p>Modifications apportées par la dernière version récupérée depuis GitHub.</p>
+                        </div>
+                    </div>
+                    <div id="u-changelog-body" style="background: var(--krono-surface-2); border: 1px solid var(--krono-border); border-radius: 12px; padding: 0.6rem 1.25rem; max-height: 300px; overflow-y: auto;">
+                    </div>
+                </div>
+
+                <div class="fade-in-up anim-delay-8 glass-card" style="background:transparent; border:none; padding:0; box-shadow:none;">
                     <div class="terminal-box" id="u-terminal" style="display:none; margin-top: 0;">
                         <div class="terminal-head">CONSOLE DE MAINTENANCE</div>
                         <div class="terminal-body" id="u-term-body"></div>
@@ -931,6 +943,19 @@ async function checkUpdate() {
         });
         const data = await r.json();
         if (data.error) throw new Error(data.error);
+
+        // Récupération du changelog depuis la réponse API GitHub
+        const changelogArea = document.getElementById('u-changelog-area');
+        const changelogBody = document.getElementById('u-changelog-body');
+        const changelogTitle = document.getElementById('u-changelog-title');
+        if (changelogArea && changelogBody && data.changelog) {
+            changelogTitle.textContent = 'Notes de version (v' + data.latest_version + ')';
+            changelogBody.innerHTML = parseMarkdown(data.changelog);
+            changelogArea.style.display = 'block';
+        } else if (changelogArea) {
+            changelogArea.style.display = 'none';
+        }
+
         if (!data.update_available) {
             badge.innerHTML = '<i class="bi bi-check-lg text-success"></i> À jour';
             area.innerHTML = '<div class="krono-alert krono-alert--success" style="background:rgba(34,197,94,0.1); color:#16a34a; padding:1rem; border-radius:8px; border:1px solid rgba(34,197,94,0.2); display:flex; align-items:center; gap:0.75rem;"><i class="bi bi-check-circle-fill"></i> <div>Votre instance est à jour (v'+data.latest_version+').</div></div>';
@@ -953,7 +978,70 @@ async function checkUpdate() {
     } catch(e) {
         badge.innerHTML = '<i class="bi bi-x-circle-fill text-danger"></i> Erreur';
         area.innerHTML = '<div class="krono-alert krono-alert--danger" style="background:rgba(239,68,68,0.1); color:#dc2626; padding:1rem; border-radius:8px; border:1px solid rgba(239,68,68,0.2); display:flex; align-items:center; gap:0.75rem;"><i class="bi bi-exclamation-triangle"></i> ' + e.message + '</div>';
+        const changelogArea = document.getElementById('u-changelog-area');
+        if (changelogArea) changelogArea.style.display = 'none';
     }
+}
+
+function parseMarkdown(md) {
+    if (!md) return '<p style="color:var(--krono-text-3); font-size:0.85rem;">Aucune note de version disponible.</p>';
+    
+    const escapeHtml = (text) => {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    };
+
+    const lines = md.split('\n');
+    let html = '';
+    let inList = false;
+
+    for (let line of lines) {
+        line = line.trim();
+        if (line === '') {
+            if (inList) {
+                html += '</ul>\n';
+                inList = false;
+            }
+            continue;
+        }
+
+        // H1, H2, H3
+        if (line.startsWith('# ')) {
+            if (inList) { html += '</ul>\n'; inList = false; }
+            html += `<h3 style="margin-top:1rem; margin-bottom:0.4rem; font-weight:800; font-size:1.1rem; color:var(--krono-text);">${escapeHtml(line.substring(2))}</h3>\n`;
+        } else if (line.startsWith('## ')) {
+            if (inList) { html += '</ul>\n'; inList = false; }
+            html += `<h4 style="margin-top:0.8rem; margin-bottom:0.3rem; font-weight:700; font-size:1rem; color:var(--krono-text);">${escapeHtml(line.substring(3))}</h4>\n`;
+        } else if (line.startsWith('### ')) {
+            if (inList) { html += '</ul>\n'; inList = false; }
+            html += `<h5 style="margin-top:0.6rem; margin-bottom:0.2rem; font-weight:700; font-size:0.9rem; color:var(--krono-accent);">${escapeHtml(line.substring(4))}</h5>\n`;
+        }
+        // Lists
+        else if (line.startsWith('- ') || line.startsWith('* ')) {
+            if (!inList) {
+                html += '<ul style="margin-bottom:0.6rem; padding-left:1.25rem; list-style-type:disc;">\n';
+                inList = true;
+            }
+            let itemContent = escapeHtml(line.substring(2));
+            itemContent = itemContent.replace(/`([^`]+)`/g, '<code style="background:var(--krono-surface-3); padding:0.15rem 0.35rem; border-radius:4px; font-size:0.85em; font-family:monospace;">$1</code>');
+            html += `<li style="margin-bottom:0.25rem; font-size:0.85rem; color:var(--krono-text-2); line-height:1.4;">${itemContent}</li>\n`;
+        } else {
+            if (inList) { html += '</ul>\n'; inList = false; }
+            let itemContent = escapeHtml(line);
+            itemContent = itemContent.replace(/`([^`]+)`/g, '<code style="background:var(--krono-surface-3); padding:0.15rem 0.35rem; border-radius:4px; font-size:0.85em; font-family:monospace;">$1</code>');
+            html += `<p style="margin-bottom:0.6rem; font-size:0.85rem; color:var(--krono-text-2); line-height:1.4;">${itemContent}</p>\n`;
+        }
+    }
+
+    if (inList) {
+        html += '</ul>\n';
+    }
+
+    return html;
 }
 
 async function startUpdate(version) {
