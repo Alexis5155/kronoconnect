@@ -146,6 +146,48 @@ class AuthController extends BaseController
         ]);
     }
 
+    // ── POST /login/check-email ───────────────────────────────────────────
+
+    public function checkEmail(): void
+    {
+        $this->verifyCsrf();
+
+        if (!\KronoConnect\Core\Captcha::validate('login')) {
+            $this->json(['success' => false, 'error' => 'Validation anti-robot échouée. Veuillez vérifier le captcha.'], 400);
+        }
+
+        $email = \KronoConnect\Core\Security::sanitizeEmail($_POST['email'] ?? '');
+        
+        if (!$email) {
+            $this->json(['success' => false, 'error' => 'Adresse e-mail requise.'], 400);
+        }
+
+        // Rate Limiting (Session based)
+        $ip = \KronoConnect\Core\Security::getClientIp();
+        $rateLimitKey = 'check_email_' . md5($ip);
+        $attempts = \KronoConnect\Core\Session::get($rateLimitKey) ?? 0;
+        
+        if ($attempts > 20) {
+            $this->json(['success' => false, 'error' => 'Trop de tentatives. Veuillez réessayer plus tard.'], 429);
+        }
+        
+        \KronoConnect\Core\Session::set($rateLimitKey, $attempts + 1);
+
+        $user = $this->users->findByEmail($email);
+        $hasWebAuthn = false;
+
+        if ($user && $user['is_active'] && ($user['status'] ?? 'actif') === 'actif') {
+            $hasWebAuthn = $this->users->hasWebAuthnCredentials((int)$user['id']);
+        }
+
+        \KronoConnect\Core\Session::set('captcha_passed_login', true);
+
+        $this->json([
+            'success' => true,
+            'has_webauthn' => $hasWebAuthn
+        ]);
+    }
+
     // ── POST /login ───────────────────────────────────────────────────────
 
     public function login(): void
@@ -158,9 +200,12 @@ class AuthController extends BaseController
         $email    = Security::sanitizeEmail($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
 
-        if (!\KronoConnect\Core\Captcha::validate('login')) {
-            redirect($loginUrl, ['error' => 'Validation anti-robot échouée. Veuillez réessayer.']);
+        if (!\KronoConnect\Core\Session::get('captcha_passed_login')) {
+            if (!\KronoConnect\Core\Captcha::validate('login')) {
+                redirect($loginUrl, ['error' => 'Validation anti-robot échouée. Veuillez réessayer.']);
+            }
         }
+        \KronoConnect\Core\Session::remove('captcha_passed_login');
 
         if (!$email) {
             redirect($loginUrl, ['error' => 'Adresse e-mail invalide.']);
@@ -669,12 +714,32 @@ class AuthController extends BaseController
 
     // ── Mot de passe oublié ───────────────────────────────────────────────
 
+    public function forgotPasswordForm(): void
+    {
+        $flowId = $_GET['flow'] ?? '';
+        
+        $adminModel = new \KronoConnect\Models\AdminModel();
+        $settings = $adminModel->getSettings();
+        $maintenance = ($settings['maintenance_mode'] ?? '0') === '1';
+
+        if ($maintenance) {
+            redirect('/login' . ($flowId ? '?flow=' . $flowId : ''), ['error' => 'La réinitialisation de mot de passe est désactivée pendant la maintenance.']);
+        }
+
+        $this->render('auth/forgot', [
+            'title'  => 'Mot de passe oublié',
+            'flowId' => $flowId,
+            'forgotError' => \KronoConnect\Core\Session::getFlash('error'),
+            'forgotSent' => \KronoConnect\Core\Session::getFlash('success') !== null
+        ]);
+    }
+
     public function forgotPassword(): void
     {
         $this->verifyCsrf();
         
         $flowId = $_GET['flow'] ?? '';
-        $loginUrl = '/login' . ($flowId ? '?flow=' . $flowId : '');
+        $forgotUrl = '/forgot-password' . ($flowId ? '?flow=' . $flowId : '');
 
         $adminModel = new \KronoConnect\Models\AdminModel();
         $settings = $adminModel->getSettings();
@@ -684,20 +749,20 @@ class AuthController extends BaseController
             if ($this->isAjax()) {
                 $this->json(['success' => false, 'errors' => ['La réinitialisation de mot de passe est désactivée pendant la maintenance.']], 403);
             }
-            redirect($loginUrl, ['error' => 'La réinitialisation de mot de passe est désactivée pendant la maintenance.']);
+            redirect('/login' . ($flowId ? '?flow=' . $flowId : ''), ['error' => 'La réinitialisation de mot de passe est désactivée pendant la maintenance.']);
         }
 
-        $email = Security::sanitizeEmail($_POST['email'] ?? '');
+        $email = \KronoConnect\Core\Security::sanitizeEmail($_POST['email'] ?? '');
 
         if (!\KronoConnect\Core\Captcha::validate('reset')) {
             if ($this->isAjax()) {
                 $this->json(['success' => false, 'errors' => ['Validation anti-robot échouée. Veuillez réessayer.']], 400);
             }
-            redirect($loginUrl, ['error' => 'Validation anti-robot échouée. Veuillez réessayer.']);
+            redirect($forgotUrl, ['error' => 'Validation anti-robot échouée. Veuillez réessayer.']);
         }
 
         if (!$email) {
-            redirect($loginUrl, ['error' => 'Adresse e-mail invalide.']);
+            redirect($forgotUrl, ['error' => 'Adresse e-mail invalide.']);
         }
 
         $user = $this->users->findByEmail($email);
@@ -734,7 +799,7 @@ class AuthController extends BaseController
         if ($this->isAjax()) {
             $this->json(['success' => true, 'message' => 'Lien envoyé si l\'adresse existe.']);
         }
-        redirect($loginUrl, ['success' => 'Si cet e-mail existe, un lien a été envoyé.']);
+        redirect($forgotUrl, ['success' => 'Si cet e-mail existe, un lien a été envoyé.']);
     }
 
     public function resetPasswordForm(string $token): void
@@ -927,10 +992,24 @@ class AuthController extends BaseController
     public function webauthnAssertionOptions(): void
     {
         try {
-            $userId = Session::get('pending_mfa_user_id');
+            $email = \KronoConnect\Core\Security::sanitizeEmail($_GET['email'] ?? '');
+            $userId = null;
+            $isPasswordless = false;
+
+            if ($email) {
+                $user = $this->users->findByEmail($email);
+                if ($user && $user['is_active'] && ($user['status'] ?? 'actif') === 'actif') {
+                    $userId = (int)$user['id'];
+                    $isPasswordless = true;
+                    \KronoConnect\Core\Session::set('passwordless_user_id', $userId);
+                }
+            } else {
+                $userId = Session::get('pending_mfa_user_id');
+            }
+
             if (!$userId) {
                 header('Content-Type: application/json');
-                echo json_encode(['error' => 'Session MFA expirée.']);
+                echo json_encode(['error' => 'Session MFA expirée ou utilisateur introuvable.']);
                 return;
             }
 
@@ -956,7 +1035,7 @@ class AuthController extends BaseController
                 true, // allowBle
                 true, // allowHybrid
                 true, // allowInternal
-                false // requireUserVerification
+                $isPasswordless // requireUserVerification
             );
 
             Session::set('webauthn_challenge', $server->getChallenge()->jsonSerialize());
@@ -972,10 +1051,11 @@ class AuthController extends BaseController
 
     public function webauthnVerify(): void
     {
-        $userId = Session::get('pending_mfa_user_id');
+        $isPasswordless = Session::get('passwordless_user_id') !== null;
+        $userId = Session::get('pending_mfa_user_id') ?? Session::get('passwordless_user_id');
         $challenge = Session::get('webauthn_challenge');
-        $flowId = Session::get('pending_mfa_flow') ?? '';
-        $rememberMe = (bool)Session::get('pending_mfa_remember');
+        $flowId = Session::get('pending_mfa_flow') ?? $_GET['flow'] ?? '';
+        $rememberMe = (bool)(Session::get('pending_mfa_remember') ?? ($_GET['remember'] ?? false));
 
         $rawInput = file_get_contents('php://input');
         $data = json_decode($rawInput, true);
@@ -1023,6 +1103,7 @@ class AuthController extends BaseController
             Session::remove('pending_mfa_user_id');
             Session::remove('pending_mfa_remember');
             Session::remove('pending_mfa_flow');
+            Session::remove('passwordless_user_id');
             Session::remove('webauthn_challenge');
 
             Logger::info('Utilisateur connecté par clé de sécurité WebAuthn', ['user_id' => $userId]);

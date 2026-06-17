@@ -513,7 +513,7 @@ class ProfileController extends BaseController
                 trim(($user['prenom'] ?? '') . ' ' . ($user['nom'] ?? '')),
                 20,
                 false,
-                false,
+                true, // requireUserVerification
                 null,
                 $excludeIds
             );

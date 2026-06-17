@@ -259,7 +259,7 @@ class UserModel extends BaseModel
     {
         $tWebAuthn = $this->db->t('user_webauthn_credentials');
         return $this->db->fetchAll(
-            "SELECT id, name, created_at, counter FROM `{$tWebAuthn}` WHERE user_id = ? ORDER BY created_at DESC",
+            "SELECT id, credential_id, name, created_at, counter FROM `{$tWebAuthn}` WHERE user_id = ? ORDER BY created_at DESC",
             [$userId]
         );
     }

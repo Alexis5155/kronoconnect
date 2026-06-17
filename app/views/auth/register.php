@@ -60,6 +60,8 @@
             </div>
             <?php endif; ?>
 
+            <?= \KronoConnect\Core\Captcha::render('register') ?>
+
             <button type="submit" class="auth-btn" style="margin-top:1.5rem;">
                 <i class="bi bi-check-lg"></i> Créer mon compte
             </button>

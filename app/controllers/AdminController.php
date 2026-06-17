@@ -1804,7 +1804,8 @@ class AdminController extends BaseController
     public function userDetail(string $idStr): void
     {
         $id   = (int)$idStr;
-        $user = $this->db->fetchOne("SELECT * FROM `$this->tUsers` WHERE id = ?", [$id]);
+        $userModel = new \KronoConnect\Models\UserModel();
+        $user = $userModel->findById($id);
 
         if (!$user) {
             redirect('/admin/users', ['error' => 'Utilisateur introuvable.']);

@@ -64,7 +64,6 @@ class SsoController extends BaseController
         }
 
         $userId = Session::userId();
-        $user = Session::get('user');
         $accessGranted = false;
         $accessMode = $client['access_mode'] ?? 'open';
 
@@ -73,7 +72,7 @@ class SsoController extends BaseController
         $tGroupMembers   = $this->db->t('group_members');
         $tConnLogs       = $this->db->t('sso_connection_logs');
 
-        if (($user['role'] ?? '') === 'super_admin') {
+        if (Session::get('user_role') === 'super_admin') {
             $accessGranted = true;
         } elseif ($accessMode === 'open') {
             $accessGranted = true;

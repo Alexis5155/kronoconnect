@@ -484,14 +484,9 @@ body.auth-body:not(.portal-body) .auth-card {
     animation: footer-fade 0.5s ease 1.2s both;
 }
 
-/* Sur les pages d'auth (login/register), on positionne le footer en absolu 
-   pour ne pas décaler le centrage vertical de la carte. */
+/* Sur les pages d'auth (login/register), on place le footer sous la carte */
 body.auth-body:not(.portal-body) .auth-footer {
-    position: absolute;
-    bottom: 1.5rem;
-    left: 0;
-    right: 0;
-    margin-top: 0;
+    margin-top: 1.5rem;
     padding: 0;
 }
 
@@ -522,4 +517,8 @@ body.auth-body.portal-body .auth-footer {
     .auth-wrap { padding: 1rem; width: 100%; }
     .auth-panel { padding: 1.75rem 1.5rem; }
     .auth-row { grid-template-columns: 1fr; }
+}
+@media (max-height: 700px) {
+    body.auth-body { align-items: flex-start; }
+    .auth-wrap { margin-top: 1rem; margin-bottom: 1rem; }
 }

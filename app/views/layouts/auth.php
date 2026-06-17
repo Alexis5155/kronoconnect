@@ -37,6 +37,12 @@ $userTheme = \KronoConnect\Core\Session::get('user')['theme'] ?? 'system';
         <?= $content ?>
     </div>
 
+    <?php
+    $settingsModel = new \KronoConnect\Models\AdminModel();
+    $globalSettings = $settingsModel->getSettings();
+    $gdprPrivacyUrl = $globalSettings['gdpr_privacy_url'] ?? '';
+    $gdprLegalUrl = $globalSettings['gdpr_legal_url'] ?? '';
+    ?>
     <div class="auth-footer" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; opacity: 0.85;">
         <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: center;">
             <i class="bi bi-github" style="color: var(--krono-text-3);"></i>
@@ -45,6 +51,19 @@ $userTheme = \KronoConnect\Core\Session::get('user')['theme'] ?? 'system';
             <i class="bi bi-shield-shaded" style="font-size: 0.8rem;"></i>
             <a href="https://github.com/Alexis5155/kronoconnect/blob/main/LICENSE" target="_blank" rel="noopener" style="font-weight: 500; font-size: 0.7rem; letter-spacing: 0.5px;">AGPL-3.0 LICENSE</a>
         </div>
+        <?php if (!empty($gdprPrivacyUrl) || !empty($gdprLegalUrl)): ?>
+        <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: center; font-size: 0.72rem;">
+            <?php if (!empty($gdprPrivacyUrl)): ?>
+                <a href="<?= htmlspecialchars($gdprPrivacyUrl) ?>" target="_blank" style="color: var(--krono-text-3); text-decoration: none; transition: color 0.3s;" onmouseover="this.style.color='var(--krono-text)'" onmouseout="this.style.color='var(--krono-text-3)'">Politique de confidentialité</a>
+            <?php endif; ?>
+            <?php if (!empty($gdprPrivacyUrl) && !empty($gdprLegalUrl)): ?>
+                <span style="opacity: 0.3; color: var(--krono-text-3);">•</span>
+            <?php endif; ?>
+            <?php if (!empty($gdprLegalUrl)): ?>
+                <a href="<?= htmlspecialchars($gdprLegalUrl) ?>" target="_blank" style="color: var(--krono-text-3); text-decoration: none; transition: color 0.3s;" onmouseover="this.style.color='var(--krono-text)'" onmouseout="this.style.color='var(--krono-text-3)'">Mentions légales</a>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -73,23 +92,6 @@ $userTheme = \KronoConnect\Core\Session::get('user')['theme'] ?? 'system';
         </div>
     </div>
 </div>
-
-<?php
-$settingsModel = new \KronoConnect\Models\AdminModel();
-$globalSettings = $settingsModel->getSettings();
-$gdprPrivacyUrl = $globalSettings['gdpr_privacy_url'] ?? '';
-$gdprLegalUrl = $globalSettings['gdpr_legal_url'] ?? '';
-?>
-<?php if (!empty($gdprPrivacyUrl) || !empty($gdprLegalUrl)): ?>
-<div style="position: fixed; bottom: 1rem; width: 100%; text-align: center; font-size: 0.8rem; z-index: 10;">
-    <?php if (!empty($gdprPrivacyUrl)): ?>
-        <a href="<?= htmlspecialchars($gdprPrivacyUrl) ?>" target="_blank" style="color: var(--krono-text-3); text-decoration: none; margin: 0 0.5rem; transition: color 0.3s;" onmouseover="this.style.color='var(--krono-text)'" onmouseout="this.style.color='var(--krono-text-3)'">Politique de confidentialité</a>
-    <?php endif; ?>
-    <?php if (!empty($gdprLegalUrl)): ?>
-        <a href="<?= htmlspecialchars($gdprLegalUrl) ?>" target="_blank" style="color: var(--krono-text-3); text-decoration: none; margin: 0 0.5rem; transition: color 0.3s;" onmouseover="this.style.color='var(--krono-text)'" onmouseout="this.style.color='var(--krono-text-3)'">Mentions légales</a>
-    <?php endif; ?>
-</div>
-<?php endif; ?>
 
 <script src="<?= asset('scripts/krono-core.js') ?>"></script>
 <script src="<?= asset('scripts/krono-auth.js') ?>"></script>

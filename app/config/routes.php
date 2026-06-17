@@ -27,6 +27,8 @@ $router->post('/login/mfa-codes-confirm', [AuthController::class, 'mfaCodesConfi
 $router->get('/login/webauthn/assertion-options', [AuthController::class, 'webauthnAssertionOptions']);
 $router->post('/login/webauthn/verify', [AuthController::class, 'webauthnVerify']);
 $router->post('/reset-password', [AuthController::class, 'forgotPassword']); // Route pour le panel "mot de passe oublié"
+$router->get('/forgot-password', [AuthController::class, 'forgotPasswordForm']);
+$router->post('/login/check-email', [AuthController::class, 'checkEmail']);
 $router->get('/reset-password/{token}', [AuthController::class, 'resetPasswordForm']);
 $router->post('/reset-password/{token}', [AuthController::class, 'resetPassword']);
 $router->get('/captcha/image',   [AuthController::class, 'captchaImage']);
