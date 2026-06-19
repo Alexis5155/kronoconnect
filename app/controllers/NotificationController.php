@@ -48,17 +48,18 @@ class NotificationController extends BaseController
             $this->json(['error' => 'invalid_json'], 400);
         }
 
-        $email   = trim((string) ($data['user_email'] ?? ''));
-        $type    = trim((string) ($data['type']       ?? 'info'));
-        $title   = trim((string) ($data['title']      ?? ''));
-        $message = trim((string) ($data['message']    ?? ''));
-        $url     = isset($data['url']) && $data['url'] !== '' ? (string) $data['url'] : null;
+        $email      = trim((string) ($data['user_email'] ?? ''));
+        $permission = trim((string) ($data['permission'] ?? ''));
+        $type       = trim((string) ($data['type']       ?? 'info'));
+        $title      = trim((string) ($data['title']      ?? ''));
+        $message    = trim((string) ($data['message']    ?? ''));
+        $url        = isset($data['url']) && $data['url'] !== '' ? (string) $data['url'] : null;
 
-        if ($email === '' || $title === '' || $message === '') {
+        if ($title === '' || $message === '') {
             $this->json(['error' => 'missing_fields'], 400);
         }
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->json(['error' => 'invalid_email'], 400);
+        if ($email === '' && $permission === '') {
+            $this->json(['error' => 'missing_recipient_or_permission'], 400);
         }
         if (!in_array($type, ['success', 'error', 'info', 'warning'], true)) {
             $type = 'info';
@@ -73,30 +74,79 @@ class NotificationController extends BaseController
             $this->json(['error' => 'invalid_url'], 400);
         }
 
-        $user = $this->users->findByEmail($email);
-        if (!$user) {
-            $this->json(['error' => 'user_not_found'], 404);
-        }
+        if ($email !== '') {
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $this->json(['error' => 'invalid_email'], 400);
+            }
+            $user = $this->users->findByEmail($email);
+            if (!$user) {
+                $this->json(['error' => 'user_not_found'], 404);
+            }
 
-        try {
-            $id = $this->notifications->create(
-                (int) $user['id'],
-                (string) $client['client_id'],
-                $type,
-                $title,
-                $message,
-                $url
-            );
-        } catch (\Throwable $e) {
-            Logger::error('Notifications: échec création', [
-                'client_id' => $client['client_id'],
-                'email'     => $email,
-                'error'     => $e->getMessage(),
-            ]);
-            $this->json(['error' => 'storage_failure'], 500);
-        }
+            try {
+                $id = $this->notifications->create(
+                    (int) $user['id'],
+                    (string) $client['client_id'],
+                    $type,
+                    $title,
+                    $message,
+                    $url
+                );
+            } catch (\Throwable $e) {
+                Logger::error('Notifications: échec création', [
+                    'client_id' => $client['client_id'],
+                    'email'     => $email,
+                    'error'     => $e->getMessage(),
+                ]);
+                $this->json(['error' => 'storage_failure'], 500);
+            }
 
-        $this->json(['status' => 'ok', 'notification_id' => $id]);
+            $this->json(['status' => 'ok', 'notification_id' => $id]);
+        } else {
+            // Loop through all active users, calculate access, and notify if they have the permission
+            $tUsers = $this->db->t('users');
+            $tServices = $this->db->t('services');
+            $tGroupMembers = $this->db->t('group_members');
+            $tGroups = $this->db->t('groups');
+
+            $activeUsers = $this->db->fetchAll("
+                SELECT u.*, s.name as service_name, g.tech_name AS role, g.name AS group_name, g.id AS group_id
+                FROM `{$tUsers}` u 
+                LEFT JOIN `{$tServices}` s ON u.service_id = s.id 
+                LEFT JOIN `{$tGroupMembers}` gm ON u.id = gm.user_id
+                LEFT JOIN `{$tGroups}` g ON gm.group_id = g.id
+                WHERE u.is_active = 1 AND u.status = 'actif'
+            ");
+
+            $notifiedCount = 0;
+            $errors = [];
+            foreach ($activeUsers as $user) {
+                $access = $this->calculateAccess($client, $user);
+                if ($access['access_granted'] && in_array($permission, $access['permissions'], true)) {
+                    try {
+                        $this->notifications->create(
+                            (int) $user['id'],
+                            (string) $client['client_id'],
+                            $type,
+                            $title,
+                            $message,
+                            $url
+                        );
+                        $notifiedCount++;
+                    } catch (\Throwable $e) {
+                        $errors[] = $e->getMessage();
+                    }
+                }
+            }
+            if (!empty($errors)) {
+                Logger::error('Notifications: échecs créations par permission', [
+                    'client_id'  => $client['client_id'],
+                    'permission' => $permission,
+                    'errors'     => $errors,
+                ]);
+            }
+            $this->json(['status' => 'ok', 'notified_count' => $notifiedCount]);
+        }
     }
 
     // ── GET /api/v1/notifications ──────────────────────────────────────────
@@ -254,5 +304,104 @@ class NotificationController extends BaseController
             'status'    => 'ok',
             'affected'  => $affected,
         ]);
+    }
+
+    private function calculateAccess(array $client, array $user): array
+    {
+        $clientId   = (int)$client['id'];
+        $userId     = (int)$user['id'];
+        $accessMode = $client['access_mode'] ?? 'open';
+
+        $tUserAppAccess    = $this->db->t('user_app_access');
+        $tGroupAppAccess   = $this->db->t('group_app_access');
+        $tGroupMembers     = $this->db->t('group_members');
+        $tPermissions      = $this->db->t('permissions');
+        $tGroupPermissions = $this->db->t('group_permissions');
+        $tUserPermissions  = $this->db->t('user_permissions');
+
+        $accessGranted = false;
+
+        if ($user['role'] === 'super_admin') {
+            $accessGranted = true;
+        } elseif ($accessMode === 'open') {
+            $accessGranted = true;
+        } elseif ($accessMode === 'manual') {
+            $manualAccess = $this->db->fetchOne(
+                "SELECT id FROM `{$tUserAppAccess}` WHERE user_id = ? AND client_id = ?",
+                [$userId, $clientId]
+            );
+            if ($manualAccess) { $accessGranted = true; }
+        } elseif ($accessMode === 'group') {
+            $groupAccess = $this->db->fetchOne("
+                SELECT gaa.group_id
+                FROM `{$tGroupAppAccess}` gaa
+                JOIN `{$tGroupMembers}` gm ON gaa.group_id = gm.group_id
+                WHERE gm.user_id = ? AND gaa.client_id = ?
+            ", [$userId, $clientId]);
+            if ($groupAccess) { $accessGranted = true; }
+        }
+
+        if ($user['role'] === 'super_admin') {
+            $allPerms = $this->db->fetchAll(
+                "SELECT perm_key FROM `{$tPermissions}` WHERE client_id = ?",
+                [$clientId]
+            );
+            $perms = array_column($allPerms, 'perm_key');
+        } else {
+            $groupPerms = $this->db->fetchAll("
+                SELECT gp.perm_key
+                FROM `{$tGroupPermissions}` gp
+                JOIN `{$tGroupMembers}` gm ON gp.group_id = gm.group_id
+                WHERE gm.user_id = ? AND gp.client_id = ?
+            ", [$userId, $clientId]);
+            $perms = array_column($groupPerms, 'perm_key');
+
+            $userPerms = $this->db->fetchAll(
+                "SELECT perm_key, granted FROM `{$tUserPermissions}` WHERE user_id = ? AND client_id = ?",
+                [$userId, $clientId]
+            );
+            foreach ($userPerms as $up) {
+                $key = $up['perm_key'];
+                if ($up['granted'] == 1) {
+                    if (!in_array($key, $perms)) { $perms[] = $key; }
+                } else {
+                    $perms = array_diff($perms, [$key]);
+                }
+            }
+        }
+
+        // Load parent mappings for this client
+        $clientPermsData = $this->db->fetchAll(
+            "SELECT perm_key, parent_key FROM `{$tPermissions}` WHERE client_id = ?",
+            [$clientId]
+        );
+        $parentsMap = [];
+        foreach ($clientPermsData as $cpd) {
+            if (!empty($cpd['parent_key'])) {
+                $parentsMap[$cpd['perm_key']] = $cpd['parent_key'];
+            }
+        }
+
+        // Pruning loop to resolve dependencies recursively
+        $changed = true;
+        while ($changed) {
+            $changed = false;
+            foreach ($perms as $i => $perm) {
+                if (isset($parentsMap[$perm])) {
+                    $parent = $parentsMap[$perm];
+                    if (!in_array($parent, $perms, true)) {
+                        unset($perms[$i]);
+                        $perms = array_values($perms);
+                        $changed = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return [
+            'access_granted' => $accessGranted,
+            'permissions'    => array_values($perms),
+        ];
     }
 }

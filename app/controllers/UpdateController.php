@@ -83,9 +83,59 @@ class UpdateController extends BaseController
             $log('success', 'Archive prête.');
 
             $this->service->apply($zipPath, $version, $log);
+
+            try {
+                $this->notifyUpdateSuccess($version);
+            } catch (\Throwable $t) {
+                \KronoConnect\Core\Logger::error("Notification de mise à jour échouée: " . $t->getMessage());
+            }
+
             $log('done', "v{$version}");
         } catch (\RuntimeException $e) {
             $log('error', $e->getMessage());
+        }
+    }
+
+    private function notifyUpdateSuccess(string $newVersion): void
+    {
+        $db = Database::getInstance();
+        $tUsers = $db->t('users');
+        $tGroupMembers = $db->t('group_members');
+        $tGroups = $db->t('groups');
+
+        $users = $db->fetchAll("
+            SELECT u.id, g.tech_name AS role
+            FROM `{$tUsers}` u
+            LEFT JOIN `{$tGroupMembers}` gm ON u.id = gm.user_id
+            LEFT JOIN `{$tGroups}` g ON gm.group_id = g.id
+            WHERE u.is_active = 1 AND u.status = 'actif'
+        ");
+
+        $userModel = new \KronoConnect\Models\UserModel();
+        $notificationModel = new \KronoConnect\Models\NotificationModel();
+
+        foreach ($users as $user) {
+            $userId = (int)$user['id'];
+            $role = $user['role'] ?? '';
+
+            $hasPerm = ($role === 'super_admin');
+            if (!$hasPerm) {
+                $perms = $userModel->getCompiledSystemPermissions($userId);
+                if (in_array('kc.settings.update', $perms, true)) {
+                    $hasPerm = true;
+                }
+            }
+
+            if ($hasPerm) {
+                $notificationModel->create(
+                    $userId,
+                    null, // Central SSO
+                    'success',
+                    'Mise à jour système effectuée',
+                    "La mise à jour de KronoConnect vers la version v{$newVersion} a été installée avec succès.",
+                    url('/admin/settings#updates')
+                );
+            }
         }
     }
 

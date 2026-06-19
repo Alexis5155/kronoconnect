@@ -606,14 +606,36 @@ $s = fn($key, $default = '') => $settings[$key] ?? $default;
                     </div>
                 </div>
 
-                <div class="fade-in-up anim-delay-8 glass-card" style="background:transparent; border:none; padding:0; box-shadow:none;">
-                    <div class="terminal-box" id="u-terminal" style="display:none; margin-top: 0;">
-                        <div class="terminal-head">CONSOLE DE MAINTENANCE</div>
-                        <div class="terminal-body" id="u-term-body"></div>
-                    </div>
-                </div>
             </div>
     </main>
+</div>
+
+<!-- Modale — Processus de mise à jour -->
+<div class="krono-modal-backdrop" id="update-modal">
+    <div class="glass-card krono-modal-content" style="max-width: 600px; width: 90%;">
+        <div class="modal-icon-box" id="update-modal-icon" style="background: rgba(59, 130, 246, 0.1); color: var(--krono-primary); margin-bottom: 1rem; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+            <i class="bi bi-cloud-arrow-down-fill" id="update-icon-i"></i>
+        </div>
+        <h3 class="modal-title" id="update-modal-title">Mise à jour du système</h3>
+        <p class="modal-text" id="update-modal-text">Préparation de la mise à jour...</p>
+        
+        <!-- Barre de progression -->
+        <div class="progress-bar-container" style="background: var(--krono-surface-3); border-radius: 8px; height: 10px; overflow: hidden; margin: 1.5rem 0; border: 1px solid var(--krono-border);">
+            <div id="update-progress-bar" style="background: linear-gradient(90deg, var(--krono-primary), var(--krono-accent, #3b5fc0)); width: 0%; height: 100%; transition: width 0.4s ease; border-radius: 8px;"></div>
+        </div>
+        
+        <!-- Console Terminal -->
+        <div class="terminal-box" id="modal-terminal" style="margin-top: 1rem; border-radius: 12px; border: 1px solid var(--krono-border); background: #0f172a; overflow: hidden;">
+            <div class="terminal-head" style="background: #1e293b; color: #94a3b8; padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 700; border-bottom: 1px solid #1e293b;">CONSOLE DE MAINTENANCE</div>
+            <div class="terminal-body" id="modal-term-body" style="padding: 1rem; color: #e2e8f0; font-family: monospace; font-size: 0.85rem; line-height: 1.6; max-height: 200px; overflow-y: auto; white-space: pre-wrap;"></div>
+        </div>
+        
+        <div class="modal-buttons" id="update-modal-buttons" style="margin-top: 1.5rem; display: none; justify-content: flex-end;">
+            <button type="button" class="btn-krono btn-krono--primary" onclick="window.location.reload()">
+                <i class="bi bi-check-circle-fill"></i> Quitter et actualiser
+            </button>
+        </div>
+    </div>
 </div>
 
 <!-- Modale — Recadrage Logo -->
@@ -1051,9 +1073,38 @@ async function startUpdate(version) {
         confirmText: 'Lancer la mise à jour'
     });
     if (!confirmed) return;
-    document.getElementById('u-terminal').style.display = 'block';
-    const body = document.getElementById('u-term-body');
+
+    // Ouvrir la modale
+    const modal = document.getElementById('update-modal');
+    modal.classList.add('is-open');
+
+    // Réinitialiser les éléments de la modale
+    const progressBar = document.getElementById('update-progress-bar');
+    progressBar.style.width = '0%';
+    progressBar.style.background = 'linear-gradient(90deg, var(--krono-primary), var(--krono-accent, #3b5fc0))';
+    
+    const title = document.getElementById('update-modal-title');
+    title.textContent = 'Mise à jour du système';
+    
+    const text = document.getElementById('update-modal-text');
+    text.textContent = 'Téléchargement et installation de la version v' + version + '...';
+    
+    const icon = document.getElementById('update-modal-icon');
+    icon.style.background = 'rgba(59, 130, 246, 0.1)';
+    icon.style.color = 'var(--krono-primary)';
+    
+    const iconI = document.getElementById('update-icon-i');
+    iconI.className = 'bi bi-cloud-arrow-down-fill';
+    
+    const body = document.getElementById('modal-term-body');
     body.innerHTML = '<span style="color:#94a3b8"># Initialisation du processus...</span>\n';
+    
+    const buttons = document.getElementById('update-modal-buttons');
+    buttons.style.display = 'none';
+
+    let progress = 10;
+    progressBar.style.width = progress + '%';
+
     try {
         const resp = await fetch('<?= url('/admin/updates/apply') ?>', { 
             method: 'POST', 
@@ -1089,21 +1140,54 @@ async function startUpdate(version) {
                         const errorMsg = obj.error || obj.msg || 'Une erreur est survenue.';
                         body.innerHTML += `<span style="color:#ef4444">! ERREUR : ${errorMsg}</span>\n`;
                         body.scrollTop = body.scrollHeight;
+                        
+                        // Mettre en erreur la modale
+                        title.textContent = 'Mise à jour interrompue';
+                        text.textContent = errorMsg;
+                        icon.style.background = 'rgba(239, 68, 68, 0.1)';
+                        icon.style.color = '#ef4444';
+                        iconI.className = 'bi bi-exclamation-triangle-fill';
+                        progressBar.style.background = '#ef4444';
+                        buttons.style.display = 'flex';
                         return; // Arrêt du processus
                     }
+                    
+                    // Incrémenter la progression
+                    progress = Math.min(95, progress + 6);
+                    progressBar.style.width = progress + '%';
+
                     body.innerHTML += `<span style="color:#22c55e">></span> ${obj.msg}\n`;
                     body.scrollTop = body.scrollHeight;
+                    
+                    if (obj.type === 'done') {
+                        // Succès de la mise à jour
+                        progressBar.style.width = '100%';
+                        title.textContent = 'Mise à jour terminée !';
+                        text.textContent = 'Le système a été mis à jour avec succès vers la version v' + version + '.';
+                        icon.style.background = 'rgba(34, 197, 94, 0.1)';
+                        icon.style.color = '#22c55e';
+                        iconI.className = 'bi bi-check-circle-fill';
+                        buttons.style.display = 'flex';
+                    }
                 } catch(e) { 
                     if(line.includes('error')) {
                         body.innerHTML += `<span style="color:#ef4444">! ${line}</span>\n`; 
+                        title.textContent = 'Mise à jour interrompue';
+                        progressBar.style.background = '#ef4444';
+                        buttons.style.display = 'flex';
                     }
                 }
             }
         }
-        body.innerHTML += '\n<span style="color:#facc15"># Mise à jour terminée avec succès. Redémarrage...</span>';
-        setTimeout(() => window.location.reload(), 2000);
     } catch(e) { 
-        body.innerHTML += `<span style="color:#ef4444">!! ERREUR CRITIQUE : ${e.message}</span>\n`; 
+        body.innerHTML += `<span style="color:#ef4444">!! ERREUR CRITIQUE : ${e.message}</span>\n`;
+        title.textContent = 'Mise à jour interrompue';
+        text.textContent = e.message;
+        icon.style.background = 'rgba(239, 68, 68, 0.1)';
+        icon.style.color = '#ef4444';
+        iconI.className = 'bi bi-exclamation-triangle-fill';
+        progressBar.style.background = '#ef4444';
+        buttons.style.display = 'flex';
     }
 }
 </script>
