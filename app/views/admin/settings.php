@@ -254,7 +254,7 @@ $s = fn($key, $default = '') => $settings[$key] ?? $default;
             <div class="settings-tab" id="tab-smtp">
                 <div class="fade-in-up anim-delay-3 glass-card">
                     <div class="card-title-area">
-                        <div class="card-icon"><i class="bi bi-envelope-paper-heart"></i></div>
+                        <div class="card-icon"><i class="bi bi-envelope-at"></i></div>
                         <div>
                             <h3>Configuration E-mail</h3>
                             <p>Serveur SMTP utilisé pour les e-mails d'inscription et de réinitialisation de mot de passe.</p>
@@ -1045,16 +1045,35 @@ function parseMarkdown(md) {
 }
 
 async function startUpdate(version) {
-    if (!confirm('Lancer la mise à jour vers la version v' + version + ' ?')) return;
+    const confirmed = await window.KronoConnect.confirm('Voulez-vous vraiment lancer la mise à jour vers la version v' + version + ' ?', {
+        title: 'Mise à jour du système',
+        type: 'warning',
+        confirmText: 'Lancer la mise à jour'
+    });
+    if (!confirmed) return;
     document.getElementById('u-terminal').style.display = 'block';
     const body = document.getElementById('u-term-body');
     body.innerHTML = '<span style="color:#94a3b8"># Initialisation du processus...</span>\n';
     try {
         const resp = await fetch('<?= url('/admin/updates/apply') ?>', { 
             method: 'POST', 
-            headers: { 'Content-Type':'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': '<?= \KronoConnect\Core\Security::csrfToken() ?>' }, 
-            body: 'version=' + version
+            headers: { 
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRF-Token': '<?= \KronoConnect\Core\Security::csrfToken() ?>'
+            }, 
+            body: 'version=' + version + '&_csrf_token=' + encodeURIComponent('<?= \KronoConnect\Core\Security::csrfToken() ?>')
         });
+
+        if (!resp.ok) {
+            let errorMsg = 'Erreur HTTP ' + resp.status;
+            try {
+                const text = await resp.text();
+                const obj = JSON.parse(text);
+                if (obj.error) errorMsg = obj.error;
+            } catch(e) {}
+            throw new Error(errorMsg);
+        }
+
         const reader = resp.body.getReader();
         const decoder = new TextDecoder();
         while (true) {
@@ -1066,13 +1085,25 @@ async function startUpdate(version) {
                 if (!line.trim()) continue;
                 try {
                     const obj = JSON.parse(line);
+                    if (obj.success === false || obj.error || obj.type === 'error') {
+                        const errorMsg = obj.error || obj.msg || 'Une erreur est survenue.';
+                        body.innerHTML += `<span style="color:#ef4444">! ERREUR : ${errorMsg}</span>\n`;
+                        body.scrollTop = body.scrollHeight;
+                        return; // Arrêt du processus
+                    }
                     body.innerHTML += `<span style="color:#22c55e">></span> ${obj.msg}\n`;
                     body.scrollTop = body.scrollHeight;
-                } catch(e) { if(line.includes('error')) body.innerHTML += `<span style="color:#ef4444">! ${line}</span>\n`; }
+                } catch(e) { 
+                    if(line.includes('error')) {
+                        body.innerHTML += `<span style="color:#ef4444">! ${line}</span>\n`; 
+                    }
+                }
             }
         }
         body.innerHTML += '\n<span style="color:#facc15"># Mise à jour terminée avec succès. Redémarrage...</span>';
         setTimeout(() => window.location.reload(), 2000);
-    } catch(e) { body.innerHTML += `<span style="color:#ef4444">!! ERREUR CRITIQUE : ${e.message}</span>\n`; }
+    } catch(e) { 
+        body.innerHTML += `<span style="color:#ef4444">!! ERREUR CRITIQUE : ${e.message}</span>\n`; 
+    }
 }
 </script>

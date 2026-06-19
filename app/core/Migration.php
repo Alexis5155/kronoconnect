@@ -93,6 +93,48 @@ class Migration
     }
 
     /**
+     * Découpe un script SQL en requêtes individuelles en respectant les blocs DELIMITER.
+     */
+    private static function splitSqlQueries(string $sql): array
+    {
+        $queries = [];
+        $query = '';
+        $delimiter = ';';
+        $sql = str_replace("\r\n", "\n", $sql);
+        $lines = explode("\n", $sql);
+
+        foreach ($lines as $line) {
+            $trimmedLine = trim($line);
+            if ($trimmedLine === '' || str_starts_with($trimmedLine, '--') || str_starts_with($trimmedLine, '#')) {
+                continue;
+            }
+
+            if (str_starts_with(strtoupper($trimmedLine), 'DELIMITER')) {
+                $parts = preg_split('/\s+/', $trimmedLine);
+                if (isset($parts[1])) {
+                    $delimiter = trim($parts[1]);
+                }
+                continue;
+            }
+
+            $query .= $line . "\n";
+
+            if (str_ends_with($trimmedLine, $delimiter)) {
+                $q = rtrim($query);
+                if (str_ends_with($q, $delimiter)) {
+                    $q = substr($q, 0, -strlen($delimiter));
+                }
+                $queries[] = trim($q);
+                $query = '';
+            }
+        }
+        if (trim($query) !== '') {
+            $queries[] = trim($query);
+        }
+        return $queries;
+    }
+
+    /**
      * Exécute toutes les migrations en attente.
      *
      * @return array<string> Liste des fichiers exécutés
@@ -113,7 +155,7 @@ class Migration
                     $sql = str_replace('{PREFIX}', self::prefix(), file_get_contents($path));
                     $db->beginTransaction();
 
-                    $statements = array_filter(array_map('trim', explode(';', $sql)));
+                    $statements = self::splitSqlQueries($sql);
                     foreach ($statements as $stmt) {
                         if (!empty($stmt)) {
                             $db->exec($stmt);
@@ -124,7 +166,9 @@ class Migration
                     $insertStmt = $db->prepare("INSERT INTO `{$migrationsTable}` (migration_name, applied_at) VALUES (?, NOW())");
                     $insertStmt->execute([$filename]);
                     
-                    $db->commit();
+                    if ($db->inTransaction()) {
+                        $db->commit();
+                    }
                     $executed[] = $filename;
                 } catch (\Exception $e) {
                     if ($db->inTransaction()) {

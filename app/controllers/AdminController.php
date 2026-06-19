@@ -151,25 +151,19 @@ class AdminController extends BaseController
                 }
                 
                 // Migrations
-                $prefix = $dbConfig['prefix'] ?? '';
-                $migTable = $prefix . 'migrations';
-                
-                $tableExists = $this->db->fetchOne("
-                    SELECT COUNT(*) as c FROM information_schema.tables 
-                    WHERE table_schema = ? AND table_name = ?
-                ", [$dbName, $migTable]);
-                
-                if ($tableExists && $tableExists['c'] > 0) {
-                    $applied = (int)$this->db->fetchOne("SELECT COUNT(*) as c FROM `$migTable`")['c'];
-                    $dbMetrics['applied_migrations'] = $applied;
+                $migStatus = \KronoConnect\Core\Migration::status();
+                $applied = 0;
+                $pending = 0;
+                foreach ($migStatus as $item) {
+                    if ($item['applied']) {
+                        $applied++;
+                    } else {
+                        $pending++;
+                    }
                 }
-                
-                $deltaDir = ROOT_PATH . '/database/migrations/delta';
-                if (is_dir($deltaDir)) {
-                    $files = glob($deltaDir . '/*.sql');
-                    $dbMetrics['total_migrations'] = count($files ?: []);
-                    $dbMetrics['pending_migrations'] = max(0, $dbMetrics['total_migrations'] - $dbMetrics['applied_migrations']);
-                }
+                $dbMetrics['applied_migrations'] = $applied;
+                $dbMetrics['pending_migrations'] = $pending;
+                $dbMetrics['total_migrations']   = count($migStatus);
             } catch (\Throwable $e) {}
         }
 

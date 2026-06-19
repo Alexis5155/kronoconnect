@@ -295,6 +295,48 @@ class UpdateService
         return false;
     }
 
+    /**
+     * Découpe un script SQL en requêtes individuelles en respectant les blocs DELIMITER.
+     */
+    private function splitSqlQueries(string $sql): array
+    {
+        $queries = [];
+        $query = '';
+        $delimiter = ';';
+        $sql = str_replace("\r\n", "\n", $sql);
+        $lines = explode("\n", $sql);
+
+        foreach ($lines as $line) {
+            $trimmedLine = trim($line);
+            if ($trimmedLine === '' || str_starts_with($trimmedLine, '--') || str_starts_with($trimmedLine, '#')) {
+                continue;
+            }
+
+            if (str_starts_with(strtoupper($trimmedLine), 'DELIMITER')) {
+                $parts = preg_split('/\s+/', $trimmedLine);
+                if (isset($parts[1])) {
+                    $delimiter = trim($parts[1]);
+                }
+                continue;
+            }
+
+            $query .= $line . "\n";
+
+            if (str_ends_with($trimmedLine, $delimiter)) {
+                $q = rtrim($query);
+                if (str_ends_with($q, $delimiter)) {
+                    $q = substr($q, 0, -strlen($delimiter));
+                }
+                $queries[] = trim($q);
+                $query = '';
+            }
+        }
+        if (trim($query) !== '') {
+            $queries[] = trim($query);
+        }
+        return $queries;
+    }
+
     private function applyMigrations(string $migrationsDir, callable $log): void
     {
         $jsonFile = $migrationsDir . '/migrations.json';
@@ -327,14 +369,19 @@ class UpdateService
                 $sql = str_replace('{PREFIX}', $this->prefix, $sql);
                 
                 $this->pdo->beginTransaction();
-                foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+                $statements = $this->splitSqlQueries($sql);
+                foreach ($statements as $stmt) {
                     if ($stmt) $this->pdo->exec($stmt);
                 }
-                $this->pdo->commit();
+                if ($this->pdo->inTransaction()) {
+                    $this->pdo->commit();
+                }
                 $this->recordMigration($name);
                 $log('success', "{$name} appliquée.");
             } catch (\PDOException $e) {
-                $this->pdo->rollBack();
+                if ($this->pdo->inTransaction()) {
+                    $this->pdo->rollBack();
+                }
                 throw new \RuntimeException("Échec de la migration {$name} : " . $e->getMessage());
             }
         }
