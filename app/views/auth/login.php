@@ -469,16 +469,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const allowCreds = getArgs.allowCredentials.map(c => ({
+            const publicKey = getArgs.publicKey || {};
+            const allowCreds = (publicKey.allowCredentials || []).map(c => ({
                 ...c,
                 id: Uint8Array.from(atob(c.id.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0))
             }));
 
-            const challengeBytes = Uint8Array.from(atob(getArgs.challenge.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+            const challengeBytes = Uint8Array.from(atob((publicKey.challenge || '').replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
 
             const credential = await navigator.credentials.get({
                 publicKey: {
-                    ...getArgs,
+                    ...publicKey,
                     challenge: challengeBytes,
                     allowCredentials: allowCreds
                 }
