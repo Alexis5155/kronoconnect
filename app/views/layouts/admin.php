@@ -143,10 +143,10 @@ $navSections = [
                 </a>
 
                 <!-- Chip utilisateur -->
-                <div class="topbar-user" style="cursor:default;">
+                <a href="<?= url('/profile') ?>" class="topbar-user" style="text-decoration:none;">
                     <div class="topbar-avatar"><?= e($initiales) ?></div>
                     <span class="topbar-user__name"><?= e($userName) ?></span>
-                </div>
+                </a>
 
                 <!-- Déconnexion -->
                 <form method="POST" action="<?= url('/logout') ?>" style="margin:0;display:inline;">

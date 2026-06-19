@@ -114,11 +114,16 @@ class UpdateController extends BaseController
         $userModel = new \KronoConnect\Models\UserModel();
         $notificationModel = new \KronoConnect\Models\NotificationModel();
 
+        // Regrouper les rôles par ID utilisateur pour éviter les doublons de notification
+        $userRoles = [];
         foreach ($users as $user) {
             $userId = (int)$user['id'];
             $role = $user['role'] ?? '';
+            $userRoles[$userId][] = $role;
+        }
 
-            $hasPerm = ($role === 'super_admin');
+        foreach ($userRoles as $userId => $roles) {
+            $hasPerm = in_array('super_admin', $roles, true);
             if (!$hasPerm) {
                 $perms = $userModel->getCompiledSystemPermissions($userId);
                 if (in_array('kc.settings.update', $perms, true)) {

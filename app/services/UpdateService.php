@@ -298,42 +298,169 @@ class UpdateService
     /**
      * Découpe un script SQL en requêtes individuelles en respectant les blocs DELIMITER.
      */
+    /**
+     * Découpe un script SQL en requêtes individuelles en respectant les blocs DELIMITER,
+     * les commentaires et les chaînes de caractères.
+     */
     private function splitSqlQueries(string $sql): array
     {
         $queries = [];
         $query = '';
         $delimiter = ';';
-        $sql = str_replace("\r\n", "\n", $sql);
-        $lines = explode("\n", $sql);
-
-        foreach ($lines as $line) {
-            $trimmedLine = trim($line);
-            if ($trimmedLine === '' || str_starts_with($trimmedLine, '--') || str_starts_with($trimmedLine, '#')) {
+        $inSingleQuote = false;
+        $inDoubleQuote = false;
+        $inBacktick = false;
+        $inLineComment = false;
+        $inBlockComment = false;
+        
+        $length = strlen($sql);
+        $i = 0;
+        
+        while ($i < $length) {
+            $char = $sql[$i];
+            $nextChar = $i + 1 < $length ? $sql[$i + 1] : '';
+            
+            // Gestion des commentaires de ligne (-- ou #)
+            if ($inLineComment) {
+                if ($char === "\n") {
+                    $inLineComment = false;
+                }
+                $i++;
                 continue;
             }
-
-            if (str_starts_with(strtoupper($trimmedLine), 'DELIMITER')) {
-                $parts = preg_split('/\s+/', $trimmedLine);
+            
+            // Gestion des commentaires de bloc (/* */)
+            if ($inBlockComment) {
+                if ($char === '*' && $nextChar === '/') {
+                    $inBlockComment = false;
+                    $i += 2;
+                } else {
+                    $i++;
+                }
+                continue;
+            }
+            
+            // Échappement dans les guillemets simples
+            if ($inSingleQuote) {
+                if ($char === '\\' && $nextChar === "'") {
+                    $query .= "\\'";
+                    $i += 2;
+                    continue;
+                }
+                if ($char === "'") {
+                    $inSingleQuote = false;
+                }
+                $query .= $char;
+                $i++;
+                continue;
+            }
+            
+            // Échappement dans les guillemets doubles
+            if ($inDoubleQuote) {
+                if ($char === '\\' && $nextChar === '"') {
+                    $query .= '\\"';
+                    $i += 2;
+                    continue;
+                }
+                if ($char === '"') {
+                    $inDoubleQuote = false;
+                }
+                $query .= $char;
+                $i++;
+                continue;
+            }
+            
+            // Échappement dans les backticks
+            if ($inBacktick) {
+                if ($char === '\\' && $nextChar === '`') {
+                    $query .= '\\`';
+                    $i += 2;
+                    continue;
+                }
+                if ($char === '`') {
+                    $inBacktick = false;
+                }
+                $query .= $char;
+                $i++;
+                continue;
+            }
+            
+            // Détection du début des commentaires
+            if ($char === '-' && $nextChar === '-') {
+                $afterDash = $i + 2 < $length ? $sql[$i + 2] : '';
+                if ($afterDash === '' || $afterDash === ' ' || $afterDash === "\t" || $afterDash === "\n" || $afterDash === "\r") {
+                    $inLineComment = true;
+                    $i += 2;
+                    continue;
+                }
+            }
+            if ($char === '#') {
+                $inLineComment = true;
+                $i++;
+                continue;
+            }
+            if ($char === '/' && $nextChar === '*') {
+                $inBlockComment = true;
+                $i += 2;
+                continue;
+            }
+            
+            // Détection du début des chaînes / identifiants
+            if ($char === "'") {
+                $inSingleQuote = true;
+                $query .= $char;
+                $i++;
+                continue;
+            }
+            if ($char === '"') {
+                $inDoubleQuote = true;
+                $query .= $char;
+                $i++;
+                continue;
+            }
+            if ($char === '`') {
+                $inBacktick = true;
+                $query .= $char;
+                $i++;
+                continue;
+            }
+            
+            // Détection du changement de DELIMITER (spécifique aux scripts SQL de migration)
+            if (trim($query) === '' && strncasecmp(substr($sql, $i, 9), 'delimiter', 9) === 0) {
+                $eolPos = strpos($sql, "\n", $i);
+                if ($eolPos === false) {
+                    $eolPos = $length;
+                }
+                $delimLine = substr($sql, $i, $eolPos - $i);
+                $parts = preg_split('/\s+/', trim($delimLine));
                 if (isset($parts[1])) {
-                    $delimiter = trim($parts[1]);
+                    $delimiter = $parts[1];
                 }
+                $i = $eolPos;
                 continue;
             }
-
-            $query .= $line . "\n";
-
-            if (str_ends_with($trimmedLine, $delimiter)) {
-                $q = rtrim($query);
-                if (str_ends_with($q, $delimiter)) {
-                    $q = substr($q, 0, -strlen($delimiter));
+            
+            // Vérification de la correspondance avec le délimiteur actuel
+            $delimLen = strlen($delimiter);
+            if (substr($sql, $i, $delimLen) === $delimiter) {
+                $q = trim($query);
+                if ($q !== '') {
+                    $queries[] = $q;
                 }
-                $queries[] = trim($q);
                 $query = '';
+                $i += $delimLen;
+                continue;
             }
+            
+            $query .= $char;
+            $i++;
         }
-        if (trim($query) !== '') {
-            $queries[] = trim($query);
+        
+        $q = trim($query);
+        if ($q !== '') {
+            $queries[] = $q;
         }
+        
         return $queries;
     }
 

@@ -103,14 +103,14 @@ $s = fn($key, $default = '') => $settings[$key] ?? $default;
                 <button type="button" class="settings-nav-btn" data-tab="captcha">
                     <i class="bi bi-shield-check"></i> <span>Captcha</span>
                 </button>
-                <button type="button" class="settings-nav-btn" data-tab="updates">
-                    <i class="bi bi-cloud-arrow-down"></i> <span>Mises à jour</span>
-                </button>
                 <button type="button" class="settings-nav-btn" data-tab="bdd">
                     <i class="bi bi-database-gear"></i> <span>Base de données</span>
                 </button>
                 <button type="button" class="settings-nav-btn" data-tab="rgpd">
                     <i class="bi bi-file-earmark-lock"></i> <span>RGPD</span>
+                </button>
+                <button type="button" class="settings-nav-btn" data-tab="updates">
+                    <i class="bi bi-cloud-arrow-down"></i> <span>Mises à jour</span>
                 </button>
             </nav>
         </div>
